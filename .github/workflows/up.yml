@@ -1,0 +1,40 @@
+name: Update
+
+on:
+  schedule:
+    # Jalan otomatis tiap 6 jam
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Biar bisa di-run manual pake tombol
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download Playlist
+        run: |
+          mkdir -p px
+          curl -L -A "Mozilla/5.0" -o px/ram2 "https://iptv.amritv.my.id/script/rbtv/getplaylist.php"
+          
+          # Cek kalau file-nya beneran playlist, bukan file error
+          if ! head -n 1 px/ram2 | grep -q "#EXTM3U"; then
+            echo "Gagal! File bukan playlist"
+            cat px/ram2
+            exit 1
+          fi
+          
+          echo "Berhasil, total channel:"
+          grep -c "#EXTINF" px/ram2
+
+      - name: Commit & Push
+        run: |
+          git config --local user.email "bot@github.com"
+          git config --local user.name "Pl Bot"
+          git add px/ram2
+          git diff --cached --quiet || git commit -m "Update - $(date +'%d-%m-%Y %H:%M')"
+          git push
